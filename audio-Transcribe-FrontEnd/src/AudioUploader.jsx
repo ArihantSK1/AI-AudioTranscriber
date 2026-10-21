@@ -1,199 +1,214 @@
-import React, { useState } from 'react';
-import axios from 'axios';
+
+import { useRef, useState } from 'react'
+import axios from 'axios'
 
 const AudioUploader = () => {
-    const [file, setFile] = useState(null);
-    const [transcription, setTranscription] = useState("");
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState("");
+  const [file, setFile] = useState(null)
+  const [transcription, setTranscription] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const fileInputRef = useRef(null)
 
-    // Debug: Log API URL and warn if missing
-    console.log("API URL:", import.meta.env.VITE_API_URL);
-    const API_URL = import.meta.env.VITE_API_URL;
+  const API_URL = import.meta.env.VITE_API_URL
+
+  const handleFileChange = (event) => {
+    const selectedFile = event.target.files?.[0]
+
+    if (selectedFile) {
+      setFile(selectedFile)
+      setTranscription('')
+      setError('')
+    }
+  }
+
+  const handleUpload = async () => {
+    if (!file) {
+      setError('Please select an audio file first.')
+      return
+    }
+
     if (!API_URL) {
-        console.warn("API URL is undefined! Make sure VITE_API_URL is set.");
+      setError('The backend URL is not configured.')
+      return
     }
 
-    const handleFileChange = (event) => {
-        setFile(event.target.files[0]);
-        setTranscription("");
-        setError("");
+    setLoading(true)
+    setError('')
+    setTranscription('')
+
+    const formData = new FormData()
+    formData.append('file', file)
+
+    try {
+      const response = await axios.post(
+        `${API_URL}/api/transcribe`,
+        formData
+      )
+
+      setTranscription(response.data.transcription || '')
+    } catch (err) {
+      console.error('Transcription error:', err)
+      setError(
+        err.response?.data?.message ||
+        'Unable to transcribe the audio. Please try again.'
+      )
+    } finally {
+      setLoading(false)
     }
+  }
 
-    const HandleUpload = async () => {
-        if (!file) {
-            setError("Please select an audio file to upload.");
-            return;
-        }
-        setLoading(true);
-        setError("");
-        setTranscription("");
-        const formData = new FormData();
-        formData.append('file', file);
+  const copyTranscription = async () => {
+    if (!transcription) return
 
-        try {
-            const response = await axios.post(`${API_URL}/api/transcribe`, formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data'
-                }
-            });
-            setTranscription(response.data.transcription);
-        } catch (error) {
-            setError("Error uploading file or transcribing audio.");
-            console.error("Error uploading file:", error);
-        } finally {
-            setLoading(false);
-        }
+    try {
+      await navigator.clipboard.writeText(transcription)
+    } catch (err) {
+      console.error('Could not copy transcription:', err)
+      setError('Unable to copy text. Please select and copy it manually.')
     }
+  }
 
-    return (
-        <div className="dark-container">
-            <div className="dark-card">
-                <h1 className="dark-title">
-                    <span role="img" aria-label="microphone">🎤</span> Audio To Text Transcriber
-                </h1>
-                <p className="dark-subtitle">
-                    Upload your audio file and get the transcribed text instantly.
-                </p>
-                <div className="dark-uploader">
-                    <input
-                        type="file"
-                        accept="audio/*"
-                        id="audio-upload"
-                        style={{ display: 'none' }}
-                        onChange={handleFileChange}
-                    />
-                    <label htmlFor="audio-upload" className="dark-upload-label">
-                        {file ? file.name : "Choose Audio File"}
-                    </label>
-                </div>
-                <button
-                    className="dark-upload-button"
-                    onClick={HandleUpload}
-                    disabled={loading}
-                >
-                    {loading ? "Transcribing..." : "Upload & Transcribe"}
-                </button>
-                {error && <div className="dark-error">{error}</div>}
-                <div className="dark-transcription-result">
-                    <h2>Transcribed Text</h2>
-                    <p>
-                        <i>{transcription ? transcription : "Your transcription will appear here."}</i>
-                    </p>
-                </div>
-            </div>
-            <style>{`
-                .dark-container {
-                    min-height: 100vh;
-                    min-width: 100vw;
-                    width: 100vw;
-                    height: 100vh;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    background: linear-gradient(135deg, #18181b 0%, #23272f 100%);
-                    font-family: 'Segoe UI', 'Roboto', 'Arial', sans-serif;
-                    transition: background 0.3s;
-                }
-                .dark-card {
-                    background: rgba(30, 32, 38, 0.98);
-                    border-radius: 22px;
-                    box-shadow: 0 8px 40px rgba(0,0,0,0.45);
-                    padding: 2.5rem 2rem 2rem 2rem;
-                    max-width: 480px;
-                    width: 95vw;
-                    text-align: center;
-                    transition: background 0.3s;
-                }
-                .dark-title {
-                    font-size: 2.2rem;
-                    font-weight: 800;
-                    margin-bottom: 0.5rem;
-                    color: #a5b4fc;
-                    letter-spacing: 1px;
-                    text-shadow: 0 2px 8px #3730a333;
-                }
-                .dark-subtitle {
-                    color: #cbd5e1;
-                    margin-bottom: 1.5rem;
-                    font-size: 1.08rem;
-                }
-                .dark-uploader {
-                    margin-bottom: 1.2rem;
-                }
-                .dark-upload-label {
-                    display: inline-block;
-                    padding: 0.8rem 1.7rem;
-                    background: linear-gradient(90deg, #6366f1 0%, #818cf8 100%);
-                    color: #fff;
-                    border-radius: 10px;
-                    cursor: pointer;
-                    font-weight: 600;
-                    font-size: 1.05rem;
-                    transition: background 0.2s, transform 0.1s;
-                    margin-bottom: 0.5rem;
-                    box-shadow: 0 2px 12px rgba(99, 102, 241, 0.13);
-                }
-                .dark-upload-label:hover {
-                    background: linear-gradient(90deg, #818cf8 0%, #6366f1 100%);
-                    transform: scale(1.03);
-                }
-                .dark-upload-button {
-                    width: 100%;
-                    padding: 0.8rem 0;
-                    background: linear-gradient(90deg, #3730a3 0%, #6366f1 100%);
-                    color: #fff;
-                    border: none;
-                    border-radius: 10px;
-                    font-size: 1.08rem;
-                    font-weight: 700;
-                    cursor: pointer;
-                    margin-bottom: 1.2rem;
-                    transition: background 0.2s, opacity 0.2s, transform 0.1s;
-                    box-shadow: 0 2px 12px rgba(55, 48, 163, 0.13);
-                    opacity: 1;
-                }
-                .dark-upload-button:disabled {
-                    opacity: 0.6;
-                    cursor: not-allowed;
-                }
-                .dark-error {
-                    color: #f87171;
-                    background: #1e293b;
-                    border-radius: 7px;
-                    padding: 0.6rem;
-                    margin-bottom: 1rem;
-                    font-size: 1rem;
-                    border: 1px solid #f87171;
-                }
-                .dark-transcription-result {
-                    background: #23272f;
-                    border-radius: 12px;
-                    padding: 1.1rem;
-                    min-height: 80px;
-                    margin-top: 0.5rem;
-                    color: #e0e7ef;
-                    font-size: 1.08rem;
-                    box-shadow: 0 1px 8px rgba(51,65,85,0.09);
-                    word-break: break-word;
-                }
-                .dark-transcription-result h2 {
-                    font-size: 1.15rem;
-                    color: #818cf8;
-                    margin-bottom: 0.4rem;
-                }
-                @media (max-width: 600px) {
-                    .dark-card {
-                        padding: 1.2rem 0.5rem 1rem 0.5rem;
-                        max-width: 99vw;
-                    }
-                    .dark-title {
-                        font-size: 1.3rem;
-                    }
-                }
-            `}</style>
+  return (
+    <div className="transcriber">
+      <div className="section-heading">
+        <div>
+          <h2>Upload your audio</h2>
+          <p>Choose a file to turn speech into text.</p>
         </div>
-    );
+        <span className="step-number">01</span>
+      </div>
+
+      <div
+        className={`drop-zone ${file ? 'has-file' : ''}`}
+        onClick={() => fileInputRef.current?.click()}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault()
+            fileInputRef.current?.click()
+          }
+        }}
+        role="button"
+        tabIndex={0}
+        aria-label="Choose an audio file"
+      >
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="audio/*"
+          onChange={handleFileChange}
+          className="file-input"
+        />
+
+        <div className="upload-icon">
+          {file ? '✓' : '↑'}
+        </div>
+
+        <h3>{file ? 'Audio file selected' : 'Drop your audio here'}</h3>
+
+        <p className="drop-description">
+          {file ? file.name : 'Or click to browse files on your device'}
+        </p>
+
+        <span className="browse-button">
+          {file ? 'Choose another file' : 'Browse files'}
+        </span>
+
+        <p className="file-note">
+          Supported formats depend on your backend configuration.
+        </p>
+      </div>
+
+      {file && (
+        <div className="selected-file">
+          <div className="file-symbol">♫</div>
+          <div className="file-details">
+            <span className="file-name">{file.name}</span>
+            <span className="file-size">
+              {(file.size / (1024 * 1024)).toFixed(2)} MB
+            </span>
+          </div>
+          <button
+            type="button"
+            className="remove-file"
+            onClick={() => {
+              setFile(null)
+              setTranscription('')
+              setError('')
+              if (fileInputRef.current) {
+                fileInputRef.current.value = ''
+              }
+            }}
+            aria-label="Remove selected file"
+          >
+            ×
+          </button>
+        </div>
+      )}
+
+      <button
+        type="button"
+        className="transcribe-button"
+        onClick={handleUpload}
+        disabled={loading}
+      >
+        {loading ? (
+          <>
+            <span className="spinner" />
+            Transcribing audio...
+          </>
+        ) : (
+          <>
+            Transcribe audio <span aria-hidden="true">→</span>
+          </>
+        )}
+      </button>
+
+      {error && (
+        <div className="error-message" role="alert">
+          <span>!</span>
+          {error}
+        </div>
+      )}
+
+      <div className="transcript-section">
+        <div className="transcript-heading">
+          <div>
+            <span className="section-label">YOUR RESULTS</span>
+            <h2>Transcript</h2>
+          </div>
+
+          {transcription && (
+            <button
+              type="button"
+              className="copy-button"
+              onClick={copyTranscription}
+            >
+              Copy text
+            </button>
+          )}
+        </div>
+
+        <div
+          className={`transcript-box ${transcription ? 'has-transcript' : ''}`}
+          aria-live="polite"
+        >
+          {loading ? (
+            <p className="placeholder-text">
+              Your audio is being processed. Please wait...
+            </p>
+          ) : transcription ? (
+            <p className="transcript-text">{transcription}</p>
+          ) : (
+            <div className="empty-transcript">
+              <div className="transcript-icon">≡</div>
+              <p>Your transcript will appear here.</p>
+              <span>Upload an audio file to get started.</span>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
 }
 
-export default AudioUploader;
+export default AudioUploader
