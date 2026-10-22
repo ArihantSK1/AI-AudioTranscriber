@@ -1,5 +1,6 @@
 package com.InsomniacScribbler.AIAudioTranscriber.Controller;
 
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.ai.audio.transcription.AudioTranscriptionPrompt;
 import org.springframework.ai.audio.transcription.AudioTranscriptionResponse;
 import org.springframework.ai.openai.OpenAiAudioTranscriptionModel;
@@ -55,6 +56,10 @@ Example Code*/
 
         // Return transcribed text
         return ResponseEntity.ok(response.getResult().getOutput());
+        }
+    @GetMapping("/test")
+    public ResponseEntity<String> test() {
+        return ResponseEntity.ok("Backend is reachable");
+    }
 
     }
-}
